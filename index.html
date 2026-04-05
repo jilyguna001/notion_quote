@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>語錄</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#faf9f7; --bg2:#f2f0ec; --text:#1a1a18; --text2:#6b6b67; --text3:#a8a8a3;
+      --border:rgba(0,0,0,0.12); --border2:rgba(0,0,0,0.22);
+      --success-bg:#eaf3de; --success:#3b6d11; --danger-bg:#fcebeb; --danger:#a32d2d;
+      --info-bg:#e6f1fb; --info:#185fa5; --radius:8px;
+      --mono:'SFMono-Regular',Consolas,'Liberation Mono',monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:#1c1c1a; --bg2:#262624; --text:#f0ede8; --text2:#a8a8a3; --text3:#6b6b67;
+        --border:rgba(255,255,255,0.12); --border2:rgba(255,255,255,0.22);
+        --success-bg:#173404; --success:#c0dd97; --danger-bg:#501313; --danger:#f09595;
+        --info-bg:#042c53; --info:#85b7eb;
+      }
+    }
+    html,body { min-height:100%; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+    #app { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2.5rem 1.5rem 2rem; position:relative; }
+    .quote-stage { width:100%; max-width:640px; text-align:center; min-height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; }
+    .quote-deco { font-family:Georgia,serif; font-size:72px; line-height:1; color:var(--text3); opacity:0.3; position:absolute; top:-16px; left:0; user-select:none; pointer-events:none; }
+    .quote-wrap { transition:opacity 0.55s ease,transform 0.55s ease; width:100%; }
+    .quote-wrap.fade-out { opacity:0; transform:translateY(10px); }
+    .quote-text { font-family:'Noto Serif TC','Source Han Serif TC',Georgia,serif; font-size:clamp(18px,3.2vw,26px); font-weight:400; line-height:1.9; color:var(--text); letter-spacing:0.08em; margin-bottom:1.4rem; }
+    .divider { width:36px; height:1px; background:var(--border); margin:0 auto 1rem; }
+    .quote-author { font-family:'Noto Serif TC',Georgia,serif; font-size:14px; color:var(--text2); letter-spacing:0.14em; }
+    .quote-author::before { content:'— '; }
+    .source-badge { position:absolute; top:14px; left:16px; font-size:11px; padding:3px 8px; border-radius:20px; border:0.5px solid var(--border); color:var(--text3); background:var(--bg2); }
+    .source-badge.sheets { border-color:#1a73e8; color:#1a73e8; background:var(--info-bg); }
+    .controls { display:flex; align-items:center; gap:20px; margin-top:2.2rem; }
+    .btn-nav { background:none; border:0.5px solid var(--border2); border-radius:50%; width:38px; height:38px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text2); transition:background 0.15s,color 0.15s; flex-shrink:0; }
+    .btn-nav:hover { background:var(--bg2); color:var(--text); }
+    .dots { display:flex; gap:7px; align-items:center; }
+    .dot { width:5px; height:5px; border-radius:50%; background:var(--border2); transition:background 0.3s,transform 0.3s; cursor:pointer; }
+    .dot.active { background:var(--text2); transform:scale(1.5); }
+    .bottom-bar { position:fixed; bottom:14px; right:18px; display:flex; gap:8px; }
+    .btn-sm { font-size:12px; padding:5px 12px; border:0.5px solid var(--border); border-radius:var(--radius); background:var(--bg); color:var(--text3); cursor:pointer; transition:background 0.15s,color 0.15s; }
+    .btn-sm:hover,.btn-sm.active-btn { background:var(--bg2); color:var(--text2); }
+    .progress-bar { position:fixed; bottom:0; left:0; height:2px; background:var(--border2); width:0%; border-radius:1px; opacity:0.5; }
+    .panel { display:none; min-height:100vh; padding:2rem 1.5rem; max-width:680px; margin:0 auto; width:100%; }
+    .panel.open { display:block; }
+    .panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; }
+    .panel-title { font-size:16px; font-weight:500; color:var(--text); }
+    .panel-tabs { display:flex; border:0.5px solid var(--border2); border-radius:var(--radius); overflow:hidden; margin-bottom:1.5rem; }
+    .tab-btn { flex:1; padding:8px 0; font-size:13px; border:none; background:none; color:var(--text2); cursor:pointer; transition:background 0.15s,color 0.15s; }
+    .tab-btn.active { background:var(--bg2); color:var(--text); font-weight:500; }
+    .tab-btn+.tab-btn { border-left:0.5px solid var(--border2); }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+    .step-block { border:0.5px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:12px; background:var(--bg2); }
+    .step-num { font-size:11px; font-weight:500; color:var(--text3); letter-spacing:0.1em; margin-bottom:6px; }
+    .step-desc { font-size:13px; color:var(--text); line-height:1.75; }
+    .step-desc code { font-family:var(--mono); font-size:12px; background:var(--bg); padding:1px 5px; border-radius:4px; border:0.5px solid var(--border); }
+    .step-desc a { color:var(--info); text-decoration:none; }
+    .step-desc a:hover { text-decoration:underline; }
+    .input-label { font-size:13px; color:var(--text2); margin-bottom:6px; display:block; }
+    .input-row { display:flex; gap:8px; align-items:stretch; }
+    .text-input { flex:1; font-size:13px; font-family:var(--mono); padding:8px 12px; border:0.5px solid var(--border2); border-radius:var(--radius); background:var(--bg); color:var(--text); outline:none; min-width:0; }
+    .text-input:focus { border-color:var(--text3); }
+    .text-input::placeholder { color:var(--text3); }
+    .hint { font-size:13px; color:var(--text3); margin-bottom:0.5rem; line-height:1.7; }
+    .json-example { font-size:12px; font-family:var(--mono); color:var(--text3); background:var(--bg2); padding:10px 12px; border-radius:var(--radius); margin-bottom:0.75rem; line-height:1.7; white-space:pre; overflow-x:auto; }
+    #json-input { width:100%; min-height:220px; font-family:var(--mono); font-size:13px; line-height:1.65; padding:12px 14px; border:0.5px solid var(--border2); border-radius:var(--radius); background:var(--bg2); color:var(--text); resize:vertical; outline:none; }
+    #json-input:focus { border-color:var(--text3); }
+    .actions { display:flex; gap:8px; margin-top:0.75rem; }
+    .btn-primary { font-size:13px; padding:8px 18px; border:none; border-radius:var(--radius); background:var(--text); color:var(--bg); cursor:pointer; transition:opacity 0.15s; }
+    .btn-primary:hover { opacity:0.75; }
+    .btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-cancel { font-size:13px; padding:8px 18px; border:0.5px solid var(--border2); border-radius:var(--radius); background:none; color:var(--text2); cursor:pointer; }
+    .msg { font-size:13px; margin-top:8px; padding:8px 12px; border-radius:var(--radius); display:none; line-height:1.6; }
+    .msg.ok   { background:var(--success-bg); color:var(--success); display:block; }
+    .msg.err  { background:var(--danger-bg);  color:var(--danger);  display:block; }
+    .msg.info { background:var(--info-bg);    color:var(--info);    display:block; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <span class="source-badge" id="sourceBadge">本機</span>
+  <div class="quote-stage">
+    <span class="quote-deco">&ldquo;</span>
+    <div class="quote-wrap" id="qwrap">
+      <p class="quote-text" id="qtext"></p>
+      <div class="divider"></div>
+      <p class="quote-author" id="qauthor"></p>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn-nav" id="btnPrev" title="上一條">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="dots" id="dots"></div>
+    <button class="btn-nav" id="btnNext" title="下一條">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn-sm active-btn" id="btnAuto">⏸ 自動</button>
+    <button class="btn-sm" id="btnManage">管理語錄</button>
+  </div>
+  <div class="progress-bar" id="progress"></div>
+</div>
+
+<div class="panel" id="manager">
+  <div class="panel-header">
+    <span class="panel-title">管理語錄</span>
+    <button class="btn-cancel" id="btnClose">← 返回</button>
+  </div>
+  <div class="panel-tabs">
+    <button class="tab-btn active" data-tab="sheets">Google Sheets 同步</button>
+    <button class="tab-btn" data-tab="json">手動 JSON</button>
+  </div>
+
+  <div class="tab-content active" id="tab-sheets">
+    <div class="step-block">
+      <div class="step-num">STEP 1 — 建立 Google Sheet</div>
+      <div class="step-desc">
+        建立試算表，<strong>第一列</strong>為標題列（任意文字），<code>A 欄</code>放語錄，<code>B 欄</code>放作者（可留空）。<br>
+        <a href="https://sheets.new" target="_blank">點此快速新建試算表 ↗</a>
+      </div>
+    </div>
+    <div class="step-block">
+      <div class="step-num">STEP 2 — 公開試算表（唯讀）</div>
+      <div class="step-desc">
+        右上角 <strong>共用</strong> → 一般存取改為「<strong>知道連結的任何人</strong>」→ 角色選「<strong>檢視者</strong>」→ 完成。<br>
+        <span style="color:var(--text3);font-size:12px;">唯讀公開；他人無法修改你的內容，也看不到你的帳號。</span>
+      </div>
+    </div>
+    <div class="step-block">
+      <div class="step-num">STEP 3 — 貼上網址並讀取</div>
+      <div class="step-desc" style="margin-bottom:10px;">
+        複製瀏覽器網址列的試算表網址，貼到下方後按「讀取」：
+      </div>
+      <label class="input-label" for="sheetUrl">Google Sheets 網址</label>
+      <div class="input-row">
+        <input class="text-input" id="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/…" />
+        <button class="btn-primary" id="btnFetch">讀取</button>
+      </div>
+      <div class="msg" id="sheetMsg"></div>
+    </div>
+    <div class="step-block" id="sheetStatus" style="display:none">
+      <div class="step-num">目前狀態</div>
+      <div class="step-desc" id="sheetStatusText"></div>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn-primary" id="btnRefetch">重新同步</button>
+        <button class="btn-cancel" id="btnClearSheet">移除連結</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-json">
+    <p class="hint">貼入 JSON 陣列。<code>text</code> 必填，<code>author</code> 選填。</p>
+    <div class="json-example">[
+  { "text": "語錄內容", "author": "作者名" },
+  { "text": "另一條語錄，不需要作者" }
+]</div>
+    <textarea id="json-input" spellcheck="false"></textarea>
+    <div class="actions">
+      <button class="btn-primary" id="btnSave">套用語錄</button>
+      <button class="btn-cancel" id="btnReset">還原預設</button>
+    </div>
+    <div class="msg" id="jsonMsg"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY='notion_quotes_v1', SHEET_URL_KEY='notion_quotes_sheet_url', INTERVAL=7000;
+const DEFAULT_QUOTES=[
+  {text:"不要因為走得太遠，就忘了當初為什麼出發。",author:"紀伯倫"},
+  {text:"生命不是要超越別人，而是要超越自己。"},
+  {text:"每一個你不想起床的清晨，都是你想要的人生的一部分。"},
+  {text:"種一棵樹最好的時機是十年前，其次是現在。",author:"中國諺語"},
+  {text:"The only way out is through.",author:"Robert Frost"},
+  {text:"做自己喜歡的事，喜歡自己做的事。"}
+];
+let quotes=[...DEFAULT_QUOTES],current=0,timer=null,autoPlay=true,progTimer=null,usingSheets=false;
+
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
+
+function toCsvUrl(raw){
+  const m=raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if(!m)return null;
+  const gid=(raw.match(/[#&?]gid=(\d+)/)||[])[1]||'0';
+  return`https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${gid}`;
+}
+
+function parseCsv(text){
+  const lines=text.trim().split('\n'),result=[];
+  for(let i=1;i<lines.length;i++){
+    if(!lines[i].trim())continue;
+    const cols=[],row=lines[i];
+    let cur='',inQ=false;
+    for(let c=0;c<row.length;c++){
+      const ch=row[c];
+      if(ch==='"'){inQ=!inQ;}
+      else if(ch===','&&!inQ){cols.push(cur);cur='';}
+      else{cur+=ch;}
+    }
+    cols.push(cur);
+    const tv=(cols[0]||'').replace(/^"|"$/g,'').trim();
+    const av=(cols[1]||'').replace(/^"|"$/g,'').trim();
+    if(tv)result.push(av?{text:tv,author:av}:{text:tv});
+  }
+  return result;
+}
+
+async function fetchSheets(rawUrl){
+  const csvUrl=toCsvUrl(rawUrl);
+  if(!csvUrl)return{ok:false,error:'無法解析試算表網址，請確認格式正確'};
+  try{
+    const res=await fetch(csvUrl);
+    if(!res.ok)throw new Error(`HTTP ${res.status}，請確認試算表已公開`);
+    const text=await res.text();
+    if(text.toLowerCase().includes('sign in')||text.includes('accounts.google'))
+      throw new Error('試算表尚未公開，請完成 STEP 2 的共用設定');
+    const arr=parseCsv(text);
+    if(!arr.length)throw new Error('沒有找到語錄，請確認 A 欄有內容且保留第一列標題');
+    return{ok:true,quotes:arr};
+  }catch(e){return{ok:false,error:e.message};}
+}
+
+function renderDots(){
+  const el=document.getElementById('dots');
+  el.innerHTML='';
+  const max=Math.min(quotes.length,9);
+  for(let i=0;i<max;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i===current%max?' active':'');
+    d.onclick=()=>goTo(i);
+    el.appendChild(d);
+  }
+}
+
+function showQuote(idx){
+  const wrap=document.getElementById('qwrap');
+  wrap.classList.add('fade-out');
+  setTimeout(()=>{
+    const q=quotes[idx];
+    document.getElementById('qtext').textContent=q.text;
+    const au=document.getElementById('qauthor');
+    au.textContent=q.author||'';
+    au.style.display=q.author?'':'none';
+    wrap.classList.remove('fade-out');
+    renderDots();
+  },300);
+}
+
+function goTo(idx){current=((idx%quotes.length)+quotes.length)%quotes.length;showQuote(current);resetProgress();}
+function next(){goTo(current+1);}
+function prev(){goTo(current-1);}
+
+function startAuto(){
+  stopAuto();timer=setInterval(next,INTERVAL);resetProgress();
+  document.getElementById('btnAuto').textContent='⏸ 自動';
+  document.getElementById('btnAuto').classList.add('active-btn');
+}
+function stopAuto(){
+  clearInterval(timer);clearTimeout(progTimer);
+  const bar=document.getElementById('progress');
+  bar.style.transition='none';bar.style.width='0%';
+  document.getElementById('btnAuto').textContent='▶ 自動';
+  document.getElementById('btnAuto').classList.remove('active-btn');
+}
+function resetProgress(){
+  if(!autoPlay)return;
+  const bar=document.getElementById('progress');
+  bar.style.transition='none';bar.style.width='0%';
+  clearTimeout(progTimer);
+  progTimer=setTimeout(()=>{bar.style.transition=`width ${INTERVAL}ms linear`;bar.style.width='100%';},50);
+}
+
+function updateBadge(){
+  const b=document.getElementById('sourceBadge');
+  if(usingSheets){b.textContent='● Sheets';b.className='source-badge sheets';}
+  else{b.textContent='本機';b.className='source-badge';}
+}
+
+function applyQuotes(arr,fromSheets){
+  quotes=arr;usingSheets=!!fromSheets;current=0;
+  updateBadge();showQuote(0);
+  if(autoPlay){stopAuto();startAuto();}
+}
+
+function showMsg(id,type,text){const el=document.getElementById(id);el.className='msg '+type;el.textContent=text;}
+
+function updateSheetStatusBlock(url,count,err){
+  document.getElementById('sheetStatus').style.display='';
+  document.getElementById('sheetUrl').value=url;
+  const txt=document.getElementById('sheetStatusText');
+  if(err){txt.innerHTML=`<span style="color:var(--danger)">上次同步失敗：${err}</span><br><span style="color:var(--text3);font-size:12px;">目前顯示備份語錄</span>`;}
+  else{txt.innerHTML=`已連結，共 <strong>${count}</strong> 條語錄。<br><span style="color:var(--text3);font-size:12px;">每次載入頁面自動從 Sheets 更新。</span>`;}
+}
+
+async function init(){
+  const savedUrl=lsGet(SHEET_URL_KEY);
+  if(savedUrl){
+    const r=await fetchSheets(savedUrl);
+    if(r.ok){applyQuotes(r.quotes,true);updateSheetStatusBlock(savedUrl,r.quotes.length,null);return;}
+    else{updateSheetStatusBlock(savedUrl,0,r.error);}
+  }
+  const raw=lsGet(STORAGE_KEY);
+  if(raw){try{const p=JSON.parse(raw);if(Array.isArray(p)&&p.length)quotes=p;}catch(e){}}
+  applyQuotes(quotes,false);
+}
+
+function openManager(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('manager').classList.add('open');
+  document.getElementById('json-input').value=JSON.stringify(quotes,null,2);
+  const savedUrl=lsGet(SHEET_URL_KEY);
+  if(savedUrl){document.getElementById('sheetUrl').value=savedUrl;document.getElementById('sheetStatus').style.display='';}
+  else{document.getElementById('sheetStatus').style.display='none';}
+  document.getElementById('sheetMsg').className='msg';
+  document.getElementById('jsonMsg').className='msg';
+}
+
+function closeManager(){
+  document.getElementById('manager').classList.remove('open');
+  document.getElementById('app').style.display='';
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  };
+});
+
+document.getElementById('btnFetch').onclick=async()=>{
+  const url=document.getElementById('sheetUrl').value.trim();
+  if(!url){showMsg('sheetMsg','err','請先貼上試算表網址');return;}
+  const btn=document.getElementById('btnFetch');
+  btn.disabled=true;btn.textContent='讀取中…';
+  showMsg('sheetMsg','info','連線至 Google Sheets 中…');
+  const r=await fetchSheets(url);
+  btn.disabled=false;btn.textContent='讀取';
+  if(r.ok){
+    lsSet(SHEET_URL_KEY,url);applyQuotes(r.quotes,true);
+    updateSheetStatusBlock(url,r.quotes.length,null);
+    showMsg('sheetMsg','ok',`✓ 成功讀取 ${r.quotes.length} 條語錄，連結已儲存`);
+  }else{showMsg('sheetMsg','err',r.error);}
+};
+
+document.getElementById('btnRefetch').onclick=async()=>{
+  const url=lsGet(SHEET_URL_KEY);if(!url)return;
+  showMsg('sheetMsg','info','重新同步中…');
+  const r=await fetchSheets(url);
+  if(r.ok){applyQuotes(r.quotes,true);updateSheetStatusBlock(url,r.quotes.length,null);showMsg('sheetMsg','ok',`✓ 已更新，共 ${r.quotes.length} 條`);}
+  else{showMsg('sheetMsg','err',r.error);}
+};
+
+document.getElementById('btnClearSheet').onclick=()=>{
+  lsDel(SHEET_URL_KEY);
+  document.getElementById('sheetUrl').value='';
+  document.getElementById('sheetStatus').style.display='none';
+  const raw=lsGet(STORAGE_KEY);
+  let q=DEFAULT_QUOTES;
+  if(raw){try{const p=JSON.parse(raw);if(Array.isArray(p)&&p.length)q=p;}catch(e){}}
+  applyQuotes(q,false);
+  showMsg('sheetMsg','ok','已移除 Sheets 連結，改用本機語錄');
+};
+
+document.getElementById('btnSave').onclick=()=>{
+  try{
+    const arr=JSON.parse(document.getElementById('json-input').value);
+    if(!Array.isArray(arr)||!arr.length)throw new Error('需要至少一條語錄');
+    if(!arr.every(q=>typeof q.text==='string'&&q.text.trim()))throw new Error('每條需有 text 欄位');
+    lsSet(STORAGE_KEY,JSON.stringify(arr));lsDel(SHEET_URL_KEY);
+    document.getElementById('sheetStatus').style.display='none';
+    applyQuotes(arr,false);showMsg('jsonMsg','ok',`✓ 已套用 ${arr.length} 條語錄`);
+    setTimeout(closeManager,700);
+  }catch(e){showMsg('jsonMsg','err','格式錯誤：'+e.message);}
+};
+
+document.getElementById('btnReset').onclick=()=>{
+  lsSet(STORAGE_KEY,JSON.stringify(DEFAULT_QUOTES));lsDel(SHEET_URL_KEY);
+  document.getElementById('json-input').value=JSON.stringify(DEFAULT_QUOTES,null,2);
+  applyQuotes(DEFAULT_QUOTES,false);showMsg('jsonMsg','ok','✓ 已還原預設語錄');
+};
+
+document.getElementById('btnNext').onclick=()=>{if(autoPlay){autoPlay=false;stopAuto();}next();};
+document.getElementById('btnPrev').onclick=()=>{if(autoPlay){autoPlay=false;stopAuto();}prev();};
+document.getElementById('btnAuto').onclick=()=>{autoPlay=!autoPlay;if(autoPlay)startAuto();else stopAuto();};
+document.getElementById('btnManage').onclick=openManager;
+document.getElementById('btnClose').onclick=closeManager;
+
+init();
+</script>
+</body>
+</html>
